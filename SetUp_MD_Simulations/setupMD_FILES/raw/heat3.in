@@ -1,0 +1,23 @@
+complex: 30ps MD with res on PROTEIN 
+ &cntrl
+  imin   = 0,
+  irest  = 1,
+  ntx    = 5,
+  ig	 =-1,
+  ntb    = 1,
+  cut    = 10.0,
+  ntr    = 1,
+  ntc    = 1,
+  ntf    = 1,
+  tempi  = 100.0,
+  temp0  = 150.0,
+  ntt    = 1,
+  nstlim = 40000, dt = 0.001,
+  ntpr = 500, ntwx = 500, ntwr = 1000
+ /
+Group input for restrained atoms
+10.0
+RES 1 301
+END
+END
+

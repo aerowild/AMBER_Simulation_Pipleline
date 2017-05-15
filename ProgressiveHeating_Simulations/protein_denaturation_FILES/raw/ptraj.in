@@ -1,0 +1,12 @@
+trajin ../Heating_win1/Heating_win1_out.mdcrd
+trajin ../Heating_win2/Heating_win2_out.mdcrd
+trajin ../Heating_win3/Heating_win3_out.mdcrd
+trajin ../Heating_win4/Heating_win4_out.mdcrd
+trajin ../Heating_win5/Heating_win5_out.mdcrd
+trajin ../Heating_win6/Heating_win6_out.mdcrd
+trajin ../Heating_win7/Heating_win7_out.mdcrd
+trajin ../Heating_win8/Heating_win8_out.mdcrd
+trajin ../Heating_win9/Heating_win9_out.mdcrd
+trajin ../Heating_win10/Heating_win10_out.mdcrd
+
+trajout Progressive_heating_all.mdvrd

@@ -1,0 +1,145 @@
+print "This is an automated script to run MD using AMBER12. It will take prepared topology and parameter files as input and try to successfully run Minimization, Heating, Equilibration and Production MD. It is highly reccomonded to check all input files (*.in )before using this script.\n Successfull completion of this script does not guarantee the successfull completion of MD, so better you check the data before blaming me\n";
+
+#########################MINIMIZATION STARTS#############################################################
+print "Coordiante files for minimization are being transferred...\n" if(system ("cp topology/complexsolv.prmtop minimization/complexsolv.prmtop"));
+print "Topology files are being transferred for Minimization...\n" if(system ("cp topology/complexsolv.inpcrd minimization/complexsolv.inpcrd"));
+
+chdir "minimization";
+
+while(1)
+{
+print "Now running restrained Minimization (min1)\n";
+system ("mpiexec -n 12 sander.MPI -O -i min.in -o min.out -p complexsolv.prmtop -c complexsolv.inpcrd -r min.rst -x min_out.mdcrd -ref complexsolv.inpcrd");
+#system('clear');
+#print "Now tracking the progress of min1 in new window:\n";
+#system('xterm -e tail -f min.out');
+sleep (10);
+last;
+}
+
+while(1)
+{
+print "Now running full Minimization (min2)\n";
+system ("mpiexec -n 12 sander.MPI -O -i min2.in -o min2.out -p complexsolv.prmtop -c min.rst -r heat0.rst -x min2_out.mdcrd");
+#system('clear');
+#print "Now tracking the progress of min2 in new window:\n";
+#system('xterm -e tail -f min2.out');
+sleep (10);
+last;
+}
+
+chdir "..";
+#########################MINIMIZATION ENDS###############################################################
+
+print "Minimization COMPLETED!\nNow Preparing for Heating\n";
+print "Simulation topology files are being transferred from Minimization to heating...\n" if(system ("cp topology/complexsolv.prmtop heating/complexsolv.prmtop"));
+print "Minimized systems are being transferred for heating...\n" if(system ("cp minimization/heat0.rst heating/heat0.rst"));
+
+#########################HEATING#############################################################
+print "Heating system...This might consume some time...:P\n";
+
+chdir "heating";
+@mdinfile = <*.in>;
+print @mdinfile;
+
+$n=1;
+foreach (@mdinfile)
+{
+$get_heatstep = substr($_,0,-3);
+print "Running $get_heatstep\n";
+$c_file="heat".$n;
+
+$m=$n-1;
+$rstin ="heat".$m; 
+print "Running MD for $c_file file \n";
+
+while(1)
+{
+$m=$n-1;
+$rstin ="heat".$m; 
+system ("pmemd.cuda -O -i $_ -o $c_file.out -p complexsolv.prmtop -c $rstin.rst -r $c_file.rst -x $c_file.mdcrd -ref $rstin.rst");
+system ("ambpdb -p complexsolv.prmtop <$c_file.rst> $c_file.pdb");
+#print "Now tracking the progress of $get_heatstep in new window:\n";
+#sleep (10);
+#system("xterm -e tail -f mdinfo");
+last;
+}
+$n= $n+1;
+}
+print "System has been heated 0-300 K.\n";
+chdir "..";
+#########################HEATING ENDS#############################################################
+
+#########################Preparion Start#############################################################
+print "Heating COMPLETED!\nNow Preparing for equilibration\n";
+print "Simulation topology files are being transferred fro equlibration...\n" if(system("cp topology/complexsolv.prmtop equilibration/complexsolv.prmtop"));
+print "Heated system is being transferred for equilibration...\n" if(system ("cp heating/heat6.rst equilibration/eql0.rst"));
+#########################Preparation Ends#############################################################
+
+#########################Equilibration#############################################################
+chdir "equilibration";
+
+@eqlinfile = <eql_*.in>;
+print @eqlinfile;
+
+$x=1;
+foreach (@eqlinfile)
+{
+
+print "Running Equillibration stage:",$x," using file",$_,"\n";
+
+$c_file="eql".$x;
+
+$y=$x-1;
+$rstin ="eql".$y; 
+print "Running MD for $c_file file \n";
+
+while(1)
+{
+$y=$x-1;
+$rstin ="eql".$y; 
+system ("pmemd.cuda -O -i $_ -o $c_file.out -p complexsolv.prmtop -c $rstin.rst -r $c_file.rst -x $c_file.mdcrd -ref $rstin.rst");
+system ("ambpdb -p complexsolv.prmtop <$c_file.rst> $c_file.pdb");
+#print "Now tracking the progress of equilibration in new window:\n";
+#sleep (20);
+#system("xterm -e tail -f mdinfo");
+last;
+}
+$x= $x+1;
+}
+
+print "An output pdb has been saved for your reference. It is highly reccomonded to check the structure before proceeding further\n" if(system ("ambpdb -p complexsolv.prmtop <eql4.rst> eql_md_out.pdb"));
+
+
+chdir "..";
+#########################Equilibration ENDS#############################################################
+
+#########################Preparion Start#############################################################
+print "Equilibration COMPLETED!\nNow Preparing for production MD (**ns Default)\n";
+print "Simulation parameters are being transferred for production MD...\n" if(system ("cp topology/complexsolv.prmtop productionMD/complexsolv.prmtop"));
+print "Equillibrated system is being transferred for productionMD...\n" if(system ("cp equilibration/eql4.rst productionMD/eql_md_out.rst"));
+#########################Preparion Ends#############################################################
+
+
+#########################Production MD Starts#############################################################
+chdir "productionMD";
+print "NOW Running Production MD\n";
+while(1)
+{
+system ("pmemd.cuda -O -i productionMD.in -o productionMD.out -p complexsolv.prmtop -c eql_md_out.rst -r productionMD_out.rst -x productionMD_out.mdcrd");
+print "Now tracking the progress of productionMD in new window:\n";
+#sleep (20);
+#system("xterm -e tail -f mdinfo");
+#sleep(10);
+last;
+}
+
+print "An output pdb has been saved for your reference.\n" if(system ("ambpdb -p complexsolv.prmtop <productionMD_out.rst> eql_md_out.pdb"));
+print "ns MD has been finished, do not be lazy to review the output files to check everything has been run correctly...:P\n";
+chdir "..";
+
+#########################Production MD Ends#############################################################
+system('clear');
+print "Please wait for a while, I am generating data for analysis of this simulation\n";
+system('analyze.pl');
+print "\nI GUESS MY JOB IS DONE HERE\n";

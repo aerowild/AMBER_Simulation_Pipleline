@@ -1,0 +1,59 @@
+Prepare toplogy for ligand:
+
+A) Parameter generation
+1)take complex and duplicate ligand to a separate file with *.pdb extension.
+
+2)Check for hydrogens in ligand, if added continue. ontherwise, use any software like pymol, reduce to add hydrogens.
+reduce UNK.pdb > UNKwh.pdb
+
+3)convert *.pdb to *.mol2 format
+antechamber -i UNK.pdb -fi pdb -o UNK.mol2 -fo mol2 -c bcc -s 2 %nproc=8
+
+4)generate parameter files for UNK bond types:
+parmchk -i UNK.mol2 -f mol2 -o UNK.frcmod
+
+B) Topology generation
+5)tleap
+>source leaprc.ff99SB #import ff99SB force field
+>source leaprc.gaff #import ff99SB force field
+>UNK=loadmol2 UNK.mol2
+>list #OPTIONAL: To check that you have a molecule in tleap library in the name of UNK
+>check UNK #OPTIONAL, but reccomoneded: To check parameters availability for ligand in imported force field. If missing parameters are found, it will give error like "Could not find angle parameter: ca - c3 - c1"
+>loadamberparams UNK.frcmod #Becuase default parameters were missing, we are laoding the parameters we created in previous step.
+>saveoff UNK UNK.lib
+>saveamberparm UNK UNK.prmtop UNK.inpcrd
+
+Prepare topology for protein:
+1)Take the same complex with ligand and remove all hydroens from it.
+2) Replace all CD atoms with CD1 for all ILE residues.
+3)tleap
+>source leaprc.ff99SB #import ff99SB force field
+>source leaprc.gaff #import ff99SB force field
+>loadamberparams UNK.frcmod
+>loadoff UNK.lib
+>complex=loadpdb complex.pdb
+>saveamberparm complex complex.prmtop complex.inpcrd
+>savepdb complex complex.pdb
+>quit
+
+
+Use complex.pdb, which is the output from previous step OR continue in tleap withour logging off:
+To add ions, you have to know the charge present on protein. It can be seen while generating the topology file in tleap.
+eg:" WARNING: The unperturbed charge of the unit: 1.996000 is not zero."
+Which means that there is +2 charge on protein, hence we have to add -2 charge manually. In this case we can not neutrlize the protein automatically becuase system will add only -1 charge.
+
+in tleap:
+>addions complex Cl- 0 (0 means automatic)
+>addions complex Cl- 2 (For given example)
+
+It is reccommonded to generate the topoly file again in order to see correctly neutralized system. If the system is neutralized orrectly, you will not see any kind of warning related to charge.
+Now, we have to solvate the protein.
+solvatebox complex TIP3PBOX 10.0
+OR
+solvateoct complex TIP3PBOX 10.0
+
+Now save topology files:
+saveamberparm complex complexsolv.prmtop complexsolv.inpcrd
+savepdb complex complexsolv.pdb
+
+
